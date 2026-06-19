@@ -292,6 +292,32 @@ FastAPI Endpoint  POST /predict
 
 ---
 
+## Known Limitations
+
+* **Metadata dominates the text signal.** The model leans heavily on contextual
+  features — especially `sender_importance` — so genuinely urgent *wording* can be
+  overruled by middling context. For example, `"Call me as soon as you see this"`
+  scores only **0.256 (SUPPRESS)** when sent as a *medium-importance (3), group-chat,
+  high-frequency* message, but the **same sentence** scores **0.825 (BYPASS_DND)**
+  from an *important (5), 1:1, low-frequency* sender. The text carries signal, but
+  not enough to win on its own against weak metadata.
+
+  | `"Call me as soon as you see this"` | Probability | Decision |
+  |---|---|---|
+  | importance 3, group chat, 10 msgs/day | 0.256 | SUPPRESS |
+  | importance 5, 1:1 chat, 1 msg/day | 0.825 | BYPASS_DND |
+
+  This is a direct consequence of the dataset having **few real urgent examples**, so
+  the model relies on the contextual priors it *can* learn. It also raises the risk
+  that `sender_importance` is partially leaking the label — see *Future Improvements*.
+* **Single train-tuned evaluation.** Reported metrics come from one test set used
+  during tuning rather than a held-out set with cross-validation, so they likely
+  overstate real-world performance.
+* **No input validation.** `/predict` accepts a raw `dict`; malformed or
+  out-of-range fields aren't rejected with a clean `422` yet (planned below).
+
+---
+
 ## Future Improvements
 
 * **Rigorous evaluation** — replace the single train-tuned test set with a
