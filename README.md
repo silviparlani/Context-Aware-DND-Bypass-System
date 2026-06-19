@@ -261,6 +261,11 @@ The decision engine is served via **FastAPI** (`app/main.py`), exposing a single
 }
 ```
 
+Live call through the interactive docs — an urgent message from an important,
+low-frequency sender correctly bypasses DND:
+
+![Live /predict response](images/api_response.png)
+
 ---
 
 ## System Architecture
@@ -362,6 +367,7 @@ DND_Bypass/
 ├── images/
 │   ├── architecture.png
 │   ├── api_docs.png        # FastAPI /docs screenshot
+│   ├── api_response.png    # live /predict response
 │   ├── simulation_output.png
 │   ├── make_architecture.py
 │   └── make_simulation_table.py
