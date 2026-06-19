@@ -1,0 +1,15 @@
+# Core ML — scikit-learn is pinned because the saved model pickles
+# (models/*.pkl) were trained with 1.6.1 and require it to load cleanly.
+scikit-learn==1.6.1
+scipy==1.17.1
+joblib==1.5.3
+numpy
+pandas
+
+# API
+fastapi
+uvicorn
+
+# Notebooks / visualization
+matplotlib
+seaborn

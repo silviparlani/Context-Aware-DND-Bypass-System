@@ -1,0 +1,41 @@
+# =============================================================
+#  PRIVACY — real chat data. NEVER COMMIT.
+#  These files contain real names, phone numbers, an email
+#  address, and sensitive personal content. Anonymization was
+#  applied to sender labels only; message *bodies* still
+#  contain PII. See README / repo notes before publishing.
+# =============================================================
+data/
+
+# Pickled DataFrame — embeds the raw `message` column (the PII above).
+# Not required to run the API (predictor.py only needs the model + vectorizer).
+models/dnd_df.pkl
+
+# =============================================================
+#  Python
+# =============================================================
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# =============================================================
+#  OS / editor cruft
+# =============================================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# =============================================================
+#  Local tooling
+# =============================================================
+.claude/settings.local.json

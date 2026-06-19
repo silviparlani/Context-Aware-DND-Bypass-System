@@ -1,0 +1,7 @@
+# Normalize line endings: store LF in the repo, check out native on each OS.
+* text=auto
+
+# Keep binary artifacts from being touched / diffed as text.
+*.pkl  binary
+*.png  binary
+*.ipynb -text
