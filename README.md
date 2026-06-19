@@ -297,6 +297,81 @@ FastAPI Endpoint  POST /predict
 
 ---
 
+## Design Decisions
+
+Each modeling choice was made empirically, comparing alternatives on the same data
+rather than by assumption. The short version of *why the system looks the way it does*:
+
+### Why a hybrid (text + metadata) model, not text alone
+
+The text-only TF-IDF baseline could find urgent messages but couldn't be *trusted* —
+urgent-class precision was only **0.40** (6 false positives on 86 test messages). Adding
+four contextual features — `sender_importance`, `is_group_chat`, `hour_of_day`,
+`average_messages_per_day` — to the TF-IDF matrix collapsed false positives **6 → 1** and
+lifted precision **0.40 → 0.83**, with recall holding steady.
+
+| Urgent-class metric | Text-only | Hybrid (text + metadata) |
+|---|--:|--:|
+| Precision | 0.40 | **0.83** |
+| Recall | 0.57 | 0.62 |
+| False positives | 6 | **1** |
+
+The takeaway that shaped the whole project: **urgency is a property of content *and*
+context, not content alone.** The same words ("call me now") mean different things from a
+key contact at 3 AM versus a busy group chat — and the model needs the metadata to tell them apart.
+
+### Why Random Forest, not Logistic Regression
+
+On the *identical* 736-feature hybrid matrix (732 TF-IDF + 4 metadata), swapping Logistic
+Regression for a Random Forest lifted urgent **recall 0.62 → 0.75** and **F1 0.71 → 0.80**,
+cutting false negatives 3 → 2 — *without adding any false positives*.
+
+| Urgent-class metric | LR hybrid | Random Forest |
+|---|--:|--:|
+| Precision | 0.83 | **0.86** |
+| Recall | 0.62 | **0.75** |
+| F1 | 0.71 | **0.80** |
+
+The reason is structural: urgency emerges from *interactions* between signals — e.g. "low
+sender importance **but** distress wording **at** 3 AM." Logistic Regression sums independent
+log-odds and can't represent those interactions; tree ensembles split on feature combinations
+and can. The recall lift on the same features is that interaction signal becoming usable.
+(`class_weight='balanced'` handles the ~8% urgent prevalence.)
+
+### Why three tiers instead of binary urgent / not-urgent
+
+A binary classifier forces every borderline message into either a full DND interruption or
+silent suppression. The three-tier policy gives the uncertain middle a **soft landing** —
+surfaced silently in a summary rather than either buzzing the phone or being hidden entirely.
+
+### Why the class boundaries are at 0.40 and 0.65
+
+These thresholds are **derived from the probability distributions, not hand-picked.** Plotting
+predicted P(urgent) by true label on the full labeled set shows the two classes barely overlap:
+
+| Label | mean | 25% | median | 75% | max |
+|---|--:|--:|--:|--:|--:|
+| Non-urgent | 0.141 | 0.098 | 0.120 | 0.168 | **0.640** |
+| Urgent | 0.769 | **0.664** | 0.840 | 0.891 | 0.943 |
+
+- **0.65 → `BYPASS_DND`.** The highest-scoring *non-urgent* message lands at **0.640** and the
+  urgent lower-quartile at **0.664** — a clean natural gap. Above ~0.65, messages are
+  empirically urgent, so they earn a full interrupt.
+- **0.40 → `SUPPRESS` floor.** A precision/recall sweep across cutoffs peaks in **F1 at 0.40**
+  (F1 0.964, precision 0.976, recall 0.952). Below 0.40 is high-confidence non-urgent.
+- **0.40–0.65 → `SILENT_SUMMARY`.** Whatever's left is the genuinely ambiguous band — the model
+  isn't confident either way, so the message is surfaced without interrupting.
+
+An earlier hand-picked policy (BYPASS ≥ 0.85) was far too conservative — it suppressed **10**
+obviously-urgent messages ("URGENT", "SOS", "call me now") on the full set. Letting the data
+set the thresholds fixed that while keeping false positives at zero.
+
+> ⚠️ **Honesty caveat:** the threshold sweep was run on the same labeled set the model was
+> trained on, so these numbers are optimistic. A held-out validation split is the top item in
+> *Future Improvements* — see *Known Limitations* below.
+
+---
+
 ## Known Limitations
 
 * **Metadata dominates the text signal.** The model leans heavily on contextual
